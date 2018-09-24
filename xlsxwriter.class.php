@@ -282,6 +282,51 @@ class XLSXWriter
 		$this->current_sheet = $sheet_name;
 	}
 
+    public function writeSheetRowWithFormat($sheet_name, array $row, $row_options=null, array $col_options=[])
+    {
+        if (empty($sheet_name))
+            return;
+
+        self::initializeSheet($sheet_name);
+        $sheet = &$this->sheets[$sheet_name];
+
+        $format =& $sheet->columns;
+        if (!empty($col_options)) {
+            $format = $this->initializeColumnTypes($col_options);
+        }
+
+        if (count($format) < count($row)) {
+            $default_column_types = $this->initializeColumnTypes( array_fill($from=0, $until=count($row), 'GENERAL') );//will map to n_auto
+            $format = array_merge((array)$format, $default_column_types);
+        }
+
+        if (!empty($row_options))
+        {
+            $ht = isset($row_options['height']) ? floatval($row_options['height']) : 12.1;
+            $customHt = isset($row_options['height']) ? true : false;
+            $hidden = isset($row_options['hidden']) ? (bool)($row_options['hidden']) : false;
+            $collapsed = isset($row_options['collapsed']) ? (bool)($row_options['collapsed']) : false;
+            $sheet->file_writer->write('<row collapsed="'.($collapsed).'" customFormat="false" customHeight="'.($customHt).'" hidden="'.($hidden).'" ht="'.($ht).'" outlineLevel="0" r="' . ($sheet->row_count + 1) . '">');
+        }
+        else
+        {
+            $sheet->file_writer->write('<row collapsed="false" customFormat="false" customHeight="false" hidden="false" ht="12.1" outlineLevel="0" r="' . ($sheet->row_count + 1) . '">');
+        }
+
+        $style = &$row_options;
+        $c=0;
+        foreach ($row as $v) {
+            $number_format = $format[$c]['number_format'];
+            $number_format_type = $format[$c]['number_format_type'];
+            $cell_style_idx = empty($style) ? $format[$c]['default_cell_style'] : $this->addCellStyle( $number_format, json_encode(isset($style[0]) ? $style[$c] : $style) );
+            $this->writeCell($sheet->file_writer, $sheet->row_count, $c, $v, $number_format_type, $cell_style_idx);
+            $c++;
+        }
+        $sheet->file_writer->write('</row>');
+        $sheet->row_count++;
+        $this->current_sheet = $sheet_name;
+    }
+
 	public function countSheetRows($sheet_name = '')
 	{
 		$sheet_name = $sheet_name ?: $this->current_sheet;
